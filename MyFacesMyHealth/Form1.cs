@@ -13,8 +13,6 @@ using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Face;
 using Emgu.CV.Structure;
-using MySql.Data;
-using MySql.Data.MySqlClient;
 
 namespace MyFacesMyHealth
 {
@@ -34,9 +32,6 @@ namespace MyFacesMyHealth
         static List<int> personNumbers = new List<int>();
         static EigenFaceRecognizer recognizer;
         static bool isTrained = false;
-        static MySqlConnection con;
-        static MySqlCommand cmd;
-        static MySqlDataReader dr;
 
         #endregion
         public Form1()
@@ -45,8 +40,7 @@ namespace MyFacesMyHealth
             btnDetectFaces.Enabled = false;
             btnAddHES.Enabled = false;
             btnTrain.Enabled = false;
-            con = new MySqlConnection("Server =localhost;Database=myfacesmyhealth;user=root;Pwd=Kku2022.;SslMode=none");
-
+            btnRecognize.Enabled = false;
         }
 
         private void btnCapture_Click(object sender, EventArgs e)
@@ -84,13 +78,10 @@ namespace MyFacesMyHealth
                             {
                                 Directory.CreateDirectory(path);
                             }
-
-
-                            Task.Factory.StartNew(() =>
-                            {
+                            Task.Factory.StartNew(() => {
                                 for (int i = 0; i < 10; i++)
                                 {
-                                    resultImage.Resize(200, 200, Inter.Cubic).Save(path + @"\" + txtNameSurname.Text + "_" + txtHES.Text + "_" + DateTime.Now.ToString("dd-mm-yyyy-hh-mm-ss") + ".jpg");
+                                    resultImage.Resize(200, 200, Inter.Cubic).Save(path + @"\" + txtNameSurname.Text + "_" + txtHES.Text+"_" + DateTime.Now.ToString("dd-mm-yyyy-hh-mm-ss") + ".jpg");
                                     Thread.Sleep(1000);
                                 }
                             });
@@ -116,40 +107,14 @@ namespace MyFacesMyHealth
                             var result = recognizer.Predict(grayFaceResult);
                             if (result.Label != -1 && result.Distance<2000)
                             {
-                                cmd = new MySqlCommand();
-                                con.Open();
-                                cmd.Connection = con;
-                                cmd.CommandText = "SELECT * FROM riskliler where HES = '"+txtHES.Text+"'";
-                                dr = cmd.ExecuteReader();
-                                if (dr.Read())
-                                {
-                                    cmd = new MySqlCommand();
-                                    cmd.Connection = con;
-                                    cmd.CommandText = "SELECT * riskliler where Risk = '"+true+"'";
-                                    dr = cmd.ExecuteReader();
-                                    if (dr.Read())
-                                    {
-                                        CvInvoke.PutText(currentImage,"Ismi : " +personNameSurname[result.Label]+" Hes Kodu : " + HesCode[result.Label]+" Riskli !", new Point(face.X - 2, face.Y - 2), FontFace.HersheyComplex, 0.5, new Bgr(Color.Pink).MCvScalar);
-                                        CvInvoke.Rectangle(currentImage, face, new Bgr(Color.Red).MCvScalar, 2);
-                                    }
-                                    else
-                                    {
-                                        CvInvoke.PutText(currentImage, "Ismi : " + personNameSurname[result.Label] + " Hes Kodu : " + HesCode[result.Label] + " Risksiz !", new Point(face.X - 2, face.Y - 2), FontFace.HersheyComplex, 0.5, new Bgr(Color.Pink).MCvScalar);
-                                        CvInvoke.Rectangle(currentImage, face, new Bgr(Color.Green).MCvScalar, 2);
-                                    }
-                                }
-                                else
-                                {
-                                    CvInvoke.PutText(currentImage, "HES Kodu Bulunamadi", new Point(face.X - 2, face.Y - 2), FontFace.HersheyComplex, 1.0, new Bgr(Color.Pink).MCvScalar);
-                                    CvInvoke.Rectangle(currentImage, face, new Bgr(Color.LightBlue).MCvScalar, 2);
-                                }
-                                con.Close();
+                                CvInvoke.PutText(currentImage,"Ismi : " +personNameSurname[result.Label]+" Hes Kodu : " + HesCode[result.Label], new Point(face.X - 2, face.Y - 2), FontFace.HersheyComplex, 0.5, new Bgr(Color.Pink).MCvScalar);
+                                CvInvoke.Rectangle(currentImage, face, new Bgr(Color.Green).MCvScalar, 2);
 
                             }
                             else
                             {
-                                CvInvoke.PutText(currentImage, "Taninamadi", new Point(face.X - 2, face.Y - 2), FontFace.HersheyComplex, 1.0, new Bgr(Color.Pink).MCvScalar);
-                                CvInvoke.Rectangle(currentImage, face, new Bgr(Color.LightBlue).MCvScalar,2);
+                                CvInvoke.PutText(currentImage, "Bilinmiyor", new Point(face.X - 2, face.Y - 2), FontFace.HersheyComplex, 1.0, new Bgr(Color.Pink).MCvScalar);
+                                CvInvoke.Rectangle(currentImage, face, new Bgr(Color.Red).MCvScalar,2);
                             }
                         }
 
@@ -172,24 +137,8 @@ namespace MyFacesMyHealth
         {
             if (txtHES.Text != "" && txtNameSurname.Text != "")
             {
-                string[] isimSoyisim = txtNameSurname.Text.Split(' ');
-                cmd = new MySqlCommand();
-                con.Open();
-                cmd.Connection = con;
-                cmd.CommandText ="INSERT INTO states(Isim,Soyisim,HES) VALUES('"+isimSoyisim[0]+"','"+isimSoyisim[1]+"','"+txtHES.Text+"')";
-                object sonuc = null;
-                sonuc = cmd.ExecuteNonQuery();
-                if (sonuc != null)
-                {
-                    MessageBox.Show("Veri Girisi Yapildi!");
-                    saveUser = true;
-                    btnAddHES.Enabled = false;
-                }
-                else
-                {
-                    Console.WriteLine("Beklenmedik bir hata olustu!");
-                }
-                con.Close();
+                saveUser = true;
+                btnAddHES.Enabled = false;
             }
             else {
                 MessageBox.Show("Lütfen Gerekli Alanları Boş Bırakmayınız.");
